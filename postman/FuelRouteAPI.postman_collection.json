@@ -1,0 +1,876 @@
+{
+  "info": {
+    "name": "Fuel Route API (Spotter assessment)",
+    "description": "Route + cost-optimal fuel stops for a 500-mile-range, 10-mpg truck.\n\nStart the server (`python manage.py runserver`) and run the requests. Open the **Visualize** tab of a response to see the map. The first call for a route makes 1 routing API call; repeats are served from cache (`meta.route_cache_hit`).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    }
+  ],
+  "item": [
+    {
+      "name": "Plan a route",
+      "item": [
+        {
+          "name": "New York → Los Angeles (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=New York, NY&finish=Los Angeles, CA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "New York, NY"
+                },
+                {
+                  "key": "finish",
+                  "value": "Los Angeles, CA"
+                }
+              ]
+            },
+            "description": "Coast to coast: ~2,800 mi, several fuel stops. Send twice to see the cached (warm) timing."
+          }
+        },
+        {
+          "name": "Chicago → Houston (POST JSON)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"start\": \"Chicago, IL\",\n  \"finish\": \"Houston, TX\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/route/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route",
+                ""
+              ]
+            },
+            "description": "Same endpoint, JSON body instead of query params."
+          }
+        },
+        {
+          "name": "Seattle → Miami",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=Seattle, WA&finish=Miami, FL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "Seattle, WA"
+                },
+                {
+                  "key": "finish",
+                  "value": "Miami, FL"
+                }
+              ]
+            },
+            "description": "Longest demo route (~3,300 mi)."
+          }
+        },
+        {
+          "name": "Denver → Atlanta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=Denver, CO&finish=Atlanta, GA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "Denver, CO"
+                },
+                {
+                  "key": "finish",
+                  "value": "Atlanta, GA"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Boston → Philadelphia (full tank: no stop needed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=Boston, MA&finish=Philadelphia, PA",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "Boston, MA"
+                },
+                {
+                  "key": "finish",
+                  "value": "Philadelphia, PA"
+                }
+              ]
+            },
+            "description": "~300 mi is within the 500-mile range, so with the default full tank no stop is needed and the cost is $0."
+          }
+        },
+        {
+          "name": "Boston → Philadelphia (start with 1/4 tank)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=Boston, MA&finish=Philadelphia, PA&start_fuel=0.25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "Boston, MA"
+                },
+                {
+                  "key": "finish",
+                  "value": "Philadelphia, PA"
+                },
+                {
+                  "key": "start_fuel",
+                  "value": "0.25"
+                }
+              ]
+            },
+            "description": "start_fuel = fraction of a full tank at departure (0-1)."
+          }
+        },
+        {
+          "name": "ZIP codes + raw coordinates",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=10001&finish=39.0997,-94.5786",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "10001"
+                },
+                {
+                  "key": "finish",
+                  "value": "39.0997,-94.5786"
+                }
+              ]
+            },
+            "description": "start/finish accept 'City, ST', a 5-digit ZIP, or 'lat,lng'."
+          }
+        },
+        {
+          "name": "Strictly cheapest plan (stop_penalty=0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Postman \"Visualize\" tab: draws the route + fuel stops on a Leaflet map.",
+                  "const body = pm.response.json();",
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has a plan\", () => {",
+                  "  pm.expect(body).to.have.property(\"fuel_stops\");",
+                  "  pm.expect(body.summary).to.have.property(\"total_fuel_cost\");",
+                  "});",
+                  "console.log(\"total_fuel_cost\", body.summary.total_fuel_cost, \"timing_ms\", JSON.stringify(body.meta.timing_ms),",
+                  "            \"external_api_calls\", JSON.stringify(body.meta.external_api_calls));",
+                  "",
+                  "const template = `",
+                  "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\"/>",
+                  "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+                  "<div style=\"font-family:sans-serif;margin-bottom:6px\">",
+                  "  <b>{{start.label}} &rarr; {{finish.label}}</b> &middot; {{route.distance_miles}} mi &middot;",
+                  "  <b>Fuel: \\${{summary.total_fuel_cost}}</b> ({{summary.total_gallons_purchased}} gal, {{summary.number_of_stops}} stops)",
+                  "  &middot; server {{meta.timing_ms.total}} ms &middot; cache hit: {{meta.route_cache_hit}}",
+                  "</div>",
+                  "<div id=\"map\" style=\"height:560px\"></div>",
+                  "<script>",
+                  "pm.getData(function (err, data) {",
+                  "  var map = L.map(\"map\");",
+                  "  L.tileLayer(\"https://tile.openstreetmap.org/{z}/{x}/{y}.png\",",
+                  "              { attribution: \"&copy; OpenStreetMap contributors\" }).addTo(map);",
+                  "  var layer = L.geoJSON(data.geojson, {",
+                  "    style: { color: \"#1f6feb\", weight: 5 },",
+                  "    onEachFeature: function (f, l) {",
+                  "      var p = f.properties;",
+                  "      if (p.kind === \"fuel_stop\") {",
+                  "        l.bindTooltip(p.stop_number + \". \" + p.name + \" (\" + p.city + \", \" + p.state + \") $\" +",
+                  "                      p.price_per_gallon + \"/gal, \" + p.gallons_purchased + \" gal = $\" + p.cost);",
+                  "      } else if (p.label) {",
+                  "        l.bindTooltip(p.kind + \": \" + p.label);",
+                  "      }",
+                  "    }",
+                  "  }).addTo(map);",
+                  "  map.fitBounds(layer.getBounds());",
+                  "});",
+                  "</script>`;",
+                  "pm.visualizer.set(template, body);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=New York, NY&finish=Los Angeles, CA&stop_penalty=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "New York, NY"
+                },
+                {
+                  "key": "finish",
+                  "value": "Los Angeles, CA"
+                },
+                {
+                  "key": "stop_penalty",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Ignores the number of stops entirely: a few dollars cheaper, many more (tiny) stops."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Map (HTML page)",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/route/map/?start=New York, NY&finish=Los Angeles, CA",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "route",
+            "map"
+          ],
+          "query": [
+            {
+              "key": "start",
+              "value": "New York, NY"
+            },
+            {
+              "key": "finish",
+              "value": "Los Angeles, CA"
+            }
+          ]
+        },
+        "description": "Leaflet/OpenStreetMap page. Use Postman's Preview tab, or open map_url from any plan response in a browser."
+      }
+    },
+    {
+      "name": "Errors",
+      "item": [
+        {
+          "name": "Outside the USA (Toronto)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns a clear error\", () => {",
+                  "  pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "  pm.expect(pm.response.json()).to.have.nested.property(\"error.code\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=43.6532,-79.3832&finish=Chicago, IL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "43.6532,-79.3832"
+                },
+                {
+                  "key": "finish",
+                  "value": "Chicago, IL"
+                }
+              ]
+            },
+            "description": "400 outside_usa"
+          }
+        },
+        {
+          "name": "Missing parameter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns a clear error\", () => {",
+                  "  pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "  pm.expect(pm.response.json()).to.have.nested.property(\"error.code\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=Chicago, IL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "Chicago, IL"
+                }
+              ]
+            },
+            "description": "400 invalid_request"
+          }
+        },
+        {
+          "name": "Unknown place",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns a clear error\", () => {",
+                  "  pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "  pm.expect(pm.response.json()).to.have.nested.property(\"error.code\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=Qwxzy Plorkville, QQ&finish=Chicago, IL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "Qwxzy Plorkville, QQ"
+                },
+                {
+                  "key": "finish",
+                  "value": "Chicago, IL"
+                }
+              ]
+            },
+            "description": "400 location_not_found"
+          }
+        },
+        {
+          "name": "No fuel coverage (price file has no N. California stations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"returns a clear error\", () => {",
+                  "  pm.expect(pm.response.code).to.be.within(400, 499);",
+                  "  pm.expect(pm.response.json()).to.have.nested.property(\"error.code\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/route/?start=San Francisco, CA&finish=Dallas, TX",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "route"
+              ],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "San Francisco, CA"
+                },
+                {
+                  "key": "finish",
+                  "value": "Dallas, TX"
+                }
+              ]
+            },
+            "description": "422 no_fuel_coverage: the first station in the price list is >500 mi away."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "event": [],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "health"
+          ],
+          "query": []
+        },
+        "description": "Station counts."
+      }
+    }
+  ]
+}

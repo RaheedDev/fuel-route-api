@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest==9.1.1
+pytest-django==4.14.0
+# Only for scripts/build_gazetteer.py (regenerating the bundled geo data).
+pyshp==3.1.6

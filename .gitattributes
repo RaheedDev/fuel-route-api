@@ -1,0 +1,2 @@
+# Keep the provided price file byte-for-byte (it uses CRLF line endings).
+*.csv -text
